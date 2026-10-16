@@ -1,0 +1,136 @@
+// Fleet port: ReplayMod 2.6.27 (stable @ 4361ec95, GPL-3.0-or-later) on NeoForge 26.1.2.
+//
+// Sources: upstream's 26.1 preprocessor output (versions/26.1/build/preprocessed + versions/26.1/src overlays + jGui),
+// imports of shaded libraries rewritten to their relocated packages, Fabric glue replaced by NeoForge (see
+// PORT-FORK-NOTES.md). libs/replaymod-libs.jar = the relocated third-party part of upstream's :26.1:bundleJar
+// (ReplayStudio, ViaVersion, jGLTF, JavaBlend, isoparser, google-api, ...), bundled into our jar as is.
+plugins {
+    id 'net.neoforged.moddev' version '2.0.141'
+}
+
+version = mod_version
+group = "com.replaymod"
+base { archivesName = "replaymod" }
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    exclusiveContent {
+        forRepository { maven { url = 'https://jitpack.io' } }
+        filter { includeGroup 'com.github.ReplayMod' }
+    }
+    exclusiveContent {
+        forRepository { maven { url = 'https://api.modrinth.com/maven' } }
+        filter { includeGroup 'maven.modrinth' }
+    }
+}
+
+configurations {
+    // plain (non-relocated) libraries bundled into our jar
+    bundle
+    implementation.extendsFrom bundle
+    localRuntimeOnly
+    runtimeClasspath.extendsFrom localRuntimeOnly
+    ffmpegNatives { transitive = false }
+}
+
+dependencies {
+    implementation files('libs/replaymod-libs.jar')
+    bundle('com.github.ReplayMod:lwjgl-utils:27dcd66') { transitive = false }
+    compileOnly 'org.lwjgl:lwjgl-tinyexr:3.3.1'
+    ffmpegNatives "org.bytedeco:ffmpeg:${ffmpeg_version}:linux-x86_64-gpl"
+    ffmpegNatives "org.bytedeco:ffmpeg:${ffmpeg_version}:windows-x86_64-gpl"
+    compileOnly 'org.projectlombok:lombok:1.18.42'
+    annotationProcessor 'org.projectlombok:lombok:1.18.42'
+    compileOnly "maven.modrinth:iris:${iris_version}"
+    compileOnly "maven.modrinth:sodium:${sodium_version}"
+}
+
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(25) }
+}
+
+neoForge {
+    version = neoforge_version
+    mods {
+        replaymod {
+            sourceSet project.sourceSets.main
+        }
+    }
+    runs {
+        configureEach {
+            jvmArgument '-Xmx3g'
+        }
+        client {
+            client()
+            if (project.hasProperty('quickPlay')) {
+                programArguments.addAll '--quickPlaySingleplayer', project.property('quickPlay').toString()
+            }
+        }
+    }
+}
+
+processResources {
+    inputs.property 'version', version
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand 'version': version
+    }
+}
+
+jar {
+    from(zipTree(file('libs/replaymod-libs.jar'))) {
+        exclude 'META-INF/MANIFEST.MF', 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'module-info.class',
+                'META-INF/versions/**'
+    }
+    from({ configurations.bundle.collect { zipTree(it) } }) {
+        exclude 'META-INF/**'
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes('Implementation-Version': version, 'MixinConfigs': '')
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-Xmaxerrs' << '2000'
+}
+
+// Optional companion mod replaymod_ffmpeg-<ffmpeg>.jar: FFmpeg GPL executables + shared libraries for Linux/Windows
+// x86_64 from org.bytedeco:ffmpeg (JNI glue libraries dropped), read by com.replaymod.render.BundledFFmpeg.
+def ffmpegStaging = layout.buildDirectory.dir('ffmpeg-staging')
+def prepareFFmpeg = tasks.register('prepareFFmpeg') {
+    inputs.files(configurations.ffmpegNatives)
+    inputs.file('src/ffmpeg/neoforge.mods.toml')
+    outputs.dir(ffmpegStaging)
+    doLast {
+        def out = ffmpegStaging.get().asFile
+        project.delete(out)
+        configurations.ffmpegNatives.resolvedConfiguration.resolvedArtifacts.each { art ->
+            def platform = art.classifier.replace('-gpl', '')
+            def target = new File(out, "replaymod-ffmpeg/${platform}")
+            project.copy {
+                from(zipTree(art.file)) {
+                    include "org/bytedeco/ffmpeg/${art.classifier}/**"
+                    exclude '**/*jni*'
+                    eachFile { it.path = it.name }
+                    includeEmptyDirs = false
+                }
+                into target
+            }
+            def names = target.list().findAll { it != 'index.txt' }.sort()
+            new File(target, 'index.txt').text = ([ffmpeg_version] + names).join('\n') + '\n'
+        }
+        new File(out, 'META-INF').mkdirs()
+        new File(out, 'META-INF/neoforge.mods.toml').text =
+                file('src/ffmpeg/neoforge.mods.toml').text.replace('${ffmpeg_version}', ffmpeg_version)
+    }
+}
+tasks.register('ffmpegJar', Jar) {
+    dependsOn prepareFFmpeg
+    from ffmpegStaging
+    archiveBaseName = 'replaymod_ffmpeg'
+    archiveVersion = ffmpeg_version
+    destinationDirectory = layout.buildDirectory.dir('libs')
+}
+tasks.named('assemble') { dependsOn 'ffmpegJar' }

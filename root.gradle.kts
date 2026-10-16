@@ -3,6 +3,16 @@ import java.io.ByteArrayOutputStream
 import org.gradle.kotlin.dsl.support.serviceOf
 import org.gradle.process.ExecOperations
 
+// Fleet fork: the pinned preprocessor (5bf41e6c3) fails mergeSourceNamedAndMojangMappings for unobfuscated 26.1
+// with the resolved Loom 1.15.50; upstream fixed it in 221276c7d ("Workaround Loom bug where all official mappings use
+// the same file").
+buildscript {
+    repositories { maven("https://jitpack.io") }
+    configurations.classpath {
+        resolutionStrategy.force("com.github.replaymod.preprocessor:preprocessor:221276c7d")
+    }
+}
+
 plugins {
     id("gg.essential.multi-version.root")
     id("gg.essential.loom") version "1.15.48" apply false
@@ -214,9 +224,7 @@ defaultTasks("bundleJar")
 
 preprocess {
     strictExtraMappings.set(true)
-
-    val mc26_02_00 = createNode("26.2", 26_02_00, "yarn")
-    val mc26_01_00 = createNode("26.1", 26_01_00, "yarn")
+    val mc26_01_00 = createNode("26.1", 26_01_00, null) // Fleet fork: unobfuscated — no mappings (preprocessor 221276c7d)
     val mc12111 = createNode("1.21.11", 12111, "yarn")
     val mc12110 = createNode("1.21.10", 12110, "yarn")
     val mc12107 = createNode("1.21.7", 12107, "yarn")
@@ -237,22 +245,6 @@ preprocess {
     val mc11801 = createNode("1.18.1", 11801, "yarn")
     val mc11701 = createNode("1.17.1", 11701, "yarn")
     val mc11604 = createNode("1.16.4", 11604, "yarn")
-    val mc11601 = createNode("1.16.1", 11601, "yarn")
-    val mc11502 = createNode("1.15.2", 11502, "yarn")
-    val mc11404 = createNode("1.14.4", 11404, "yarn")
-    val mc11404Forge = createNode("1.14.4-forge", 11404, "srg")
-    val mc11202 = createNode("1.12.2", 11202, "srg")
-    val mc11201 = createNode("1.12.1", 11201, "srg")
-    val mc11200 = createNode("1.12", 11200, "srg")
-    val mc11102 = createNode("1.11.2", 11102, "srg")
-    val mc11100 = createNode("1.11", 11100, "srg")
-    val mc11002 = createNode("1.10.2", 11002, "srg")
-    val mc10904 = createNode("1.9.4", 10904, "srg")
-    val mc10809 = createNode("1.8.9", 10809, "srg")
-    val mc10800 = createNode("1.8", 10800, "srg")
-    val mc10710 = createNode("1.7.10", 10710, "srg")
-
-    mc26_02_00.link(mc26_01_00, file("versions/mapping-fabric-26.2-26.1.txt"))
     mc26_01_00.link(mc12111, file("versions/mapping-fabric-26.1-1.21.11.txt"))
     mc26_01_00.link(mc12111, file("versions/mapping-fabric-26.1-1.21.11.txt"))
     mc12111.link(mc12110, file("versions/mapping-fabric-1.21.11-1.21.10.txt"))
@@ -274,18 +266,4 @@ preprocess {
     mc11802.link(mc11801)
     mc11801.link(mc11701, file("versions/mapping-fabric-1.18.1-1.17.1.txt"))
     mc11701.link(mc11604, file("versions/mapping-fabric-1.17.1-1.16.4.txt"))
-    mc11604.link(mc11601)
-    mc11601.link(mc11502)
-    mc11502.link(mc11404, file("versions/mapping-fabric-1.15.2-1.14.4.txt"))
-    mc11404.link(mc11404Forge)
-    mc11404Forge.link(mc11202, file("versions/mapping-forge-1.14.4-1.12.2.txt"))
-    mc11202.link(mc11201)
-    mc11201.link(mc11200)
-    mc11200.link(mc11102)
-    mc11102.link(mc11100)
-    mc11100.link(mc11002)
-    mc11002.link(mc10904)
-    mc10904.link(mc10809, file("versions/mapping-forge-1.9.4-1.8.9.txt"))
-    mc10809.link(mc10800, file("versions/mapping-forge-1.8.9-1.8.txt"))
-    mc10800.link(mc10710, file("versions/mapping-forge-1.8-1.7.10.txt"))
 }

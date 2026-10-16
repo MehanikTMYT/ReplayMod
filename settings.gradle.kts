@@ -19,13 +19,6 @@ pluginManagement {
 val jGuiVersions = listOf(
         // "1.7.10",
         // "1.8",
-        "1.8.9",
-        "1.9.4",
-        "1.12",
-        "1.14.4-forge",
-        "1.14.4",
-        "1.15.2",
-        "1.16.1",
         "1.16.4",
         "1.17.1",
         "1.18.1",
@@ -47,23 +40,10 @@ val jGuiVersions = listOf(
         "1.21.10",
         "1.21.11",
         "26.1",
-        "26.2",
 )
 val replayModVersions = listOf(
         // "1.7.10",
         // "1.8",
-        "1.8.9",
-        "1.9.4",
-        "1.10.2",
-        "1.11",
-        "1.11.2",
-        "1.12",
-        "1.12.1",
-        "1.12.2",
-        "1.14.4-forge",
-        "1.14.4",
-        "1.15.2",
-        "1.16.1",
         "1.16.4",
         "1.17.1",
         "1.18.1",
@@ -85,9 +65,9 @@ val replayModVersions = listOf(
         "1.21.10",
         "1.21.11",
         "26.1",
-        "26.2",
 )
 
+// Fleet fork: only the preprocessor chain 1.16.4 (main) -> 26.1 is built; originals in .fleet-orig/
 rootProject.buildFileName = "root.gradle.kts"
 
 includeBuild("libs/ReplayStudio")

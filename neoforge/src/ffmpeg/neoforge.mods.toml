@@ -1,0 +1,19 @@
+license = "GPL-3.0-or-later (FFmpeg GPL build)"
+
+[[mods]]
+modId = "replaymod_ffmpeg"
+version = "${ffmpeg_version}"
+displayName = "Replay Mod: bundled FFmpeg"
+description = '''
+FFmpeg (GPL build: x264, x265, libvpx) for Replay Mod video rendering on Linux and Windows x86_64.
+Only used when no system FFmpeg is found on the PATH.
+Binaries: JavaCPP Presets org.bytedeco:ffmpeg:${ffmpeg_version} (build scripts: https://github.com/bytedeco/javacpp-presets/tree/master/ffmpeg).
+FFmpeg sources: https://ffmpeg.org/download.html
+'''
+
+[[dependencies.replaymod_ffmpeg]]
+modId = "replaymod"
+type = "required"
+versionRange = "[2.6.27,)"
+ordering = "NONE"
+side = "CLIENT"
